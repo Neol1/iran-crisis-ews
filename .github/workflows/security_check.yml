@@ -1,0 +1,22 @@
+name: Security Check
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pre-commit security scan
+        run: |
+          grep -rE "(sk-[a-zA-Z0-9]{20,}|[a-f0-9]{32,}|AIza[0-9A-Za-z_-]{35})" \
+            src/ notebooks/ config/ 2>/dev/null && exit 1 || echo "✅ No hardcoded keys"
+
+      - name: Ensure no secret files committed
+        run: |
+          git ls-files | grep -E "\.env$|kaggle\.json$" && exit 1 || echo "✅ No secret files tracked"

@@ -1,7 +1,7 @@
 name: Daily Data Update
 on:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: "0 6 * * *" # 6 AM UTC = 9:30 AM Tehran
   workflow_dispatch:
 
 jobs:
@@ -9,25 +9,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      
+          python-version: "3.10"
+
       - name: Install deps
         run: pip install -r requirements.txt
-      
+
       - name: Security check
         run: |
-          grep -rE "(sk-[a-zA-Z0-9]{20,}|[a-f0-9]{32,})"             src/ notebooks/ && exit 1 || echo "✅ Clean"
-      
+          grep -rE "(sk-[a-zA-Z0-9]{20,}|[a-f0-9]{32,})" \
+            src/ notebooks/ && exit 1 || echo "✅ Clean"
+
       - name: Run ingestion
         env:
           ACLED_KEY: ${{ secrets.ACLED_KEY }}
           ACLED_EMAIL: ${{ secrets.ACLED_EMAIL }}
           FIRMS_KEY: ${{ secrets.FIRMS_KEY }}
         run: python -m src.ingestion.run_all
-      
+
       - name: Commit changes
         run: |
           git config user.name "Hermes Bot"
