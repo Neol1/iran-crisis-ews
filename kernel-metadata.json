@@ -1,0 +1,13 @@
+{
+  "id": "neolabs/iran-crisis-early-warning",
+  "title": "Iran Crisis Early Warning System",
+  "code_file": "phase1.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "docker_image_url": null
+}

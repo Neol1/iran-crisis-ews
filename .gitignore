@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+data/
+outputs/
+artifacts/
+*.parquet
+*.graphml
+*.pt
+*.pkl
+.env
+kaggle.json
+.DS_Store
+*.log

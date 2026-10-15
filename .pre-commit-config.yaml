@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=5000']
+      - id: detect-private-key
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: no-api-keys
+        name: Detect hardcoded API keys
+        entry: bash -c 'grep -rE "(sk-[a-zA-Z0-9]{20,}|[a-f0-9]{32,})" src/ notebooks/ && exit 1 || exit 0'
+        language: system
+        pass_filenames: false
