@@ -9,6 +9,7 @@ artifacts/
 *.pt
 *.pkl
 .env
+.venv/
 kaggle.json
 .DS_Store
 *.log
