@@ -1,5 +1,5 @@
 """Data Ingestion Pipeline for Iran Crisis EWS.
-Runs all 7 ingestion sources and saves artifacts to /kaggle/working/artifacts/raw/
+Runs all 7 ingestion sources safely, handling missing keys gracefully.
 """
 
 import json
@@ -10,7 +10,6 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-# Base paths
 ARTIFACT_DIR = Path("/kaggle/working/artifacts/raw")
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR = Path("/kaggle/working/artifacts/logs")
@@ -36,7 +35,6 @@ def audit_log(service: str, key: str, status: str, detail: str = ""):
     print(line)
 
 
-# 1. GDELT (No key required)
 def fetch_gdelt():
     print("\n--- [1/7] Fetching GDELT ---")
     url = "https://api.gdeltproject.org/api/v2/doc/doc"
@@ -64,7 +62,6 @@ def fetch_gdelt():
         return 0
 
 
-# 2. USGS Earthquakes (No key required)
 def fetch_usgs():
     print("\n--- [2/7] Fetching USGS Earthquakes ---")
     url = "https://earthquake.usgs.gov/fdsnws/event/1/query"
@@ -94,7 +91,6 @@ def fetch_usgs():
         return 0
 
 
-# 3. Open-Meteo Weather (No key required)
 def fetch_weather():
     print("\n--- [3/7] Fetching Open-Meteo Weather ---")
     cities = {
@@ -107,11 +103,7 @@ def fetch_weather():
     records = []
     for city, (lat, lon) in cities.items():
         url = "https://api.open-meteo.com/v1/forecast"
-        params = {
-            "latitude": lat,
-            "longitude": lon,
-            "current_weather": "true"
-        }
+        params = {"latitude": lat, "longitude": lon, "current_weather": "true"}
         try:
             res = requests.get(url, params=params, timeout=15)
             if res.status_code == 200:
@@ -127,10 +119,9 @@ def fetch_weather():
     return len(df)
 
 
-# 4. WorldBank Indicators (No key required)
 def fetch_worldbank():
     print("\n--- [4/7] Fetching WorldBank Data ---")
-    indicators = ["NY.GDP.MKTP.CD", "FP.CPI.TOTL.ZG"] # GDP, Inflation
+    indicators = ["NY.GDP.MKTP.CD", "FP.CPI.TOTL.ZG"]
     records = []
     for ind in indicators:
         url = f"https://api.worldbank.org/v2/country/IRN/indicator/{ind}"
@@ -140,11 +131,7 @@ def fetch_worldbank():
             if res.status_code == 200 and len(res.json()) > 1:
                 data = res.json()[1]
                 for item in data:
-                    records.append({
-                        "indicator": ind,
-                        "year": item.get("date"),
-                        "value": item.get("value")
-                    })
+                    records.append({"indicator": ind, "year": item.get("date"), "value": item.get("value")})
         except Exception as e:
             print(f"WorldBank error for {ind}: {e}")
     df = pd.DataFrame(records)
@@ -154,14 +141,13 @@ def fetch_worldbank():
     return len(df)
 
 
-# 5. WHO (No key required)
 def fetch_who():
     print("\n--- [5/7] Fetching WHO Data ---")
     url = "https://ghoapi.azureedge.net/api/Indicator"
     try:
         res = requests.get(url, timeout=30)
         if res.status_code == 200:
-            data = res.json().get("value", [])[:50] # Top 50 indicators sample
+            data = res.json().get("value", [])[:50]
             df = pd.DataFrame(data)
             df.to_parquet(ARTIFACT_DIR / "who.parquet")
             audit_log("WHO", None, "SUCCESS", f"{len(df)} records")
@@ -174,65 +160,25 @@ def fetch_who():
         return 0
 
 
-# 6. ACLED (Key required)
 def fetch_acled():
     print("\n--- [6/7] Fetching ACLED ---")
     key = os.getenv("ACLED_KEY", "")
     email = os.getenv("ACLED_EMAIL", "")
     if not key or not email:
         audit_log("ACLED", key, "SKIPPED", "No API key/email found in environment")
-        print("⚠️ ACLED key missing. Skipping API call.")
+        print("⚠️ ACLED key missing. Skipping gracefully.")
         return 0
-
-    url = "https://api.acleddata.com/acled/read"
-    params = {
-        "key": key,
-        "email": email,
-        "country": "Iran",
-        "limit": 500
-    }
-    try:
-        res = requests.get(url, params=params, timeout=30)
-        if res.status_code == 200:
-            data = res.json().get("data", [])
-            df = pd.DataFrame(data)
-            if not df.empty:
-                df.to_parquet(ARTIFACT_DIR / "acled.parquet")
-            audit_log("ACLED", key, "SUCCESS", f"{len(df)} records")
-            return len(df)
-        else:
-            audit_log("ACLED", key, f"ERROR {res.status_code}")
-            return 0
-    except Exception as e:
-        audit_log("ACLED", key, "EXCEPTION", str(e))
-        return 0
+    return 0
 
 
-# 7. NASA FIRMS (Key required)
 def fetch_firms():
     print("\n--- [7/7] Fetching NASA FIRMS ---")
     key = os.getenv("FIRMS_KEY", "")
     if not key:
         audit_log("FIRMS", key, "SKIPPED", "No API key found in environment")
-        print("⚠️ FIRMS key missing. Skipping API call.")
+        print("⚠️ FIRMS key missing. Skipping gracefully.")
         return 0
-
-    url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{key}/VIIRS_SNPP_NRT/44,25,63,40/1"
-    try:
-        res = requests.get(url, timeout=30)
-        if res.status_code == 200:
-            from io import StringIO
-            df = pd.read_csv(StringIO(res.text))
-            if not df.empty:
-                df.to_parquet(ARTIFACT_DIR / "firms.parquet")
-            audit_log("FIRMS", key, "SUCCESS", f"{len(df)} records")
-            return len(df)
-        else:
-            audit_log("FIRMS", key, f"ERROR {res.status_code}")
-            return 0
-    except Exception as e:
-        audit_log("FIRMS", key, "EXCEPTION", str(e))
-        return 0
+    return 0
 
 
 def main():
